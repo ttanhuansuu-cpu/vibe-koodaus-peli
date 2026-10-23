@@ -1,0 +1,8 @@
+{
+  "name": "Cyber Climber - 2D Platformer",
+  "description": "2D platformer with horizontal-to-vertical climb, underside power-up cubes, stompable enemies, and touch controls.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
