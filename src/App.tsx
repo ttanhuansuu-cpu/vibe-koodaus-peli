@@ -179,7 +179,7 @@ export default function App() {
         inputRef.current.jumpHeld = true;
         e.preventDefault();
       }
-      if (e.code === 'KeyX' || e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyJ') {
+      if (e.code === 'KeyE' || e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyJ') {
         inputRef.current.dashPressed = true;
       }
     };
