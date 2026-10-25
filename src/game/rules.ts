@@ -1,9 +1,5 @@
 import { PowerUpType, Rank, LevelSummary, Rect } from './types';
 
-/**
- * Rules and mechanics for the 2D Platformer
- */
-
 export const POWER_UP_POOL: PowerUpType[] = [
   'DOUBLE_JUMP',
   'HIGH_JUMP',
@@ -12,37 +8,56 @@ export const POWER_UP_POOL: PowerUpType[] = [
 ];
 
 /**
- * Evaluates cube break progress.
- * Core rule: Breaking 2 cubes triggers a power-up and resets the counter.
+ * Kuution rikkoutuminen:
+ * - 2 osumaa riittää avaamaan pysyvän voiman (aikaisemman 3 sijasta).
+ * - Ensimmäinen voima on AINA DOUBLE_JUMP (tuplahyppy).
  */
 export function processCubeBreak(
   currentCubes: number,
-  preferredPowerUp?: PowerUpType
+  arg2?: number | PowerUpType,
+  arg3?: PowerUpType
 ): {
   newCount: number;
   triggeredPowerUp: PowerUpType | null;
+  newTotalPowerUps: number;
 } {
+  let totalPowerUpsAwarded = 0;
+  let preferredPowerUp: PowerUpType | undefined;
+
+  if (typeof arg2 === 'number') {
+    totalPowerUpsAwarded = arg2;
+    preferredPowerUp = arg3;
+  } else if (typeof arg2 === 'string') {
+    preferredPowerUp = arg2;
+  }
+
   const nextCount = currentCubes + 1;
   if (nextCount >= 2) {
-    // 2 cubes broken! Award powerup and reset count to 0
-    const powerUp = preferredPowerUp ?? POWER_UP_POOL[Math.floor(Math.random() * POWER_UP_POOL.length)];
+    let powerUp: PowerUpType;
+    if (preferredPowerUp) {
+      powerUp = preferredPowerUp;
+    } else if (totalPowerUpsAwarded === 0) {
+      // 1. powerup on aina tuplahyppy!
+      powerUp = 'DOUBLE_JUMP';
+    } else {
+      const progressionPool: PowerUpType[] = ['DOUBLE_JUMP', 'HIGH_JUMP', 'SHIELD', 'SUPER_DASH'];
+      powerUp = progressionPool[totalPowerUpsAwarded % progressionPool.length];
+    }
+
     return {
       newCount: 0,
       triggeredPowerUp: powerUp,
+      newTotalPowerUps: totalPowerUpsAwarded + 1,
     };
   }
+
   return {
     newCount: nextCount,
     triggeredPowerUp: null,
+    newTotalPowerUps: totalPowerUpsAwarded,
   };
 }
 
-/**
- * Calculates difficulty scaling based on vertical climb height.
- * As altitude increases (player moves higher up, Y is negative in canvas coordinates):
- * - Obstacle speed scales up (from 1.0x at ground up to 2.5x+ at high altitude).
- * - Tighter timing requirements.
- */
 export function calculateDifficultyScaling(
   playerY: number,
   groundY: number = 500
@@ -51,13 +66,8 @@ export function calculateDifficultyScaling(
   speedMultiplier: number;
   tier: number;
 } {
-  // Height climbed above ground level
   const heightClimbed = Math.max(0, groundY - playerY);
-  // 50 pixels = 1 meter
   const altitudeMeters = Math.floor(heightClimbed / 50);
-
-  // Difficulty scales linearly with climb
-  // Base 1.0x, adds +0.02x per meter climbed, capped at 3.0x
   const speedMultiplier = Number(Math.min(3.0, 1.0 + altitudeMeters * 0.02).toFixed(2));
 
   let tier = 1;
@@ -68,47 +78,30 @@ export function calculateDifficultyScaling(
   return { altitudeMeters, speedMultiplier, tier };
 }
 
-/**
- * Collision check: Player jumping into a Power-Up Cube from underneath.
- * The player's top edge hits the cube's bottom edge while moving upward (vy < 0).
- */
 export function checkUndersideCubeCollision(
   player: Rect,
   playerVy: number,
   cube: Rect
 ): boolean {
-  // Player must be moving upwards or starting jump
   if (playerVy > 80) return false;
 
-  // Horizontal overlap
   const horizontalOverlap =
     player.x + player.width > cube.x + 2 &&
     player.x < cube.x + cube.width - 2;
 
   if (!horizontalOverlap) return false;
 
-  // Player's head is hitting the bottom half of the cube
   const cubeBottom = cube.y + cube.height;
   const playerTop = player.y;
 
-  const verticalHit =
-    playerTop <= cubeBottom + 12 &&
-    playerTop >= cube.y + 4;
-
-  return verticalHit;
+  return playerTop <= cubeBottom + 12 && playerTop >= cube.y + 4;
 }
 
-/**
- * Collision check: Player stomping/bouncing on top of an enemy.
- * Returns whether it was a stomp (player descending, lands on enemy head)
- * or a damage hit (player hits side/bottom of enemy).
- */
 export function checkEnemyCollision(
   player: Rect,
   playerVy: number,
   enemy: Rect
 ): { isStomp: boolean; isDamage: boolean } {
-  // AABB intersection
   const intersects =
     player.x < enemy.x + enemy.width &&
     player.x + player.width > enemy.x &&
@@ -119,22 +112,16 @@ export function checkEnemyCollision(
     return { isStomp: false, isDamage: false };
   }
 
-  // Stomp condition: player is falling (vy > -50) and player's feet are within the top 35% of enemy
   const playerFeet = player.y + player.height;
-  const enemyTop = enemy.y;
   const enemyStompThreshold = enemy.y + enemy.height * 0.45;
 
   if (playerVy > -30 && playerFeet <= enemyStompThreshold + 12) {
     return { isStomp: true, isDamage: false };
   }
 
-  // Otherwise, it's a damage collision
   return { isStomp: false, isDamage: true };
 }
 
-/**
- * Calculates Level Summary and Rank (S, A, B, C) based on performance
- */
 export function calculateLevelSummary(
   score: number,
   enemiesStomped: number,
@@ -142,7 +129,6 @@ export function calculateLevelSummary(
   maxAltitude: number,
   timeElapsed: number
 ): LevelSummary {
-  // Bonus score calculation
   const altitudeBonus = maxAltitude * 25;
   const enemyBonus = enemiesStomped * 200;
   const cubeBonus = cubesBroken * 150;
@@ -150,23 +136,22 @@ export function calculateLevelSummary(
 
   const totalScore = score + altitudeBonus + enemyBonus + cubeBonus + timeBonus;
 
-  // Grade calculation
   let rank: Rank = 'C';
   let stars = 1;
-  let rankFeedback = 'Stage cleared! Keep practicing to climb faster.';
+  let rankFeedback = 'Taso läpäisty!';
 
   if (totalScore >= 6500 && cubesBroken >= 4 && enemiesStomped >= 3) {
     rank = 'S';
     stars = 3;
-    rankFeedback = 'LEGENDARY! Flawless ascent and peak mastery.';
+    rankFeedback = 'LEGENDAARISTA! Täydellinen nousu!';
   } else if (totalScore >= 4500 && cubesBroken >= 2) {
     rank = 'A';
     stars = 3;
-    rankFeedback = 'EXCELLENT! Great cube combos and vertical agility.';
+    rankFeedback = 'LOISTAVAA! Erinomainen suoritus.';
   } else if (totalScore >= 2500) {
     rank = 'B';
     stars = 2;
-    rankFeedback = 'GOOD RUN! Try hitting more cubes for higher rank.';
+    rankFeedback = 'HYVÄ RUN! Kokeile osua useampiin kuutioihin.';
   }
 
   return {
@@ -181,38 +166,35 @@ export function calculateLevelSummary(
   };
 }
 
-/**
- * Power-up metadata and definitions
- */
 export const POWER_UP_CONFIGS: Record<
   PowerUpType,
   { name: string; desc: string; duration: number; color: string; icon: string }
 > = {
   DOUBLE_JUMP: {
-    name: 'AERO DOUBLE JUMP',
-    desc: 'Jump mid-air to reach higher platforms',
-    duration: 18,
+    name: 'AERO TUPLAHYPPY',
+    desc: 'Tuplahyppy aktivoitu pysyvästi! Voit hypätä ilmassa uudelleen.',
+    duration: Infinity,
     color: '#06b6d4',
     icon: 'feather',
   },
   HIGH_JUMP: {
-    name: 'SPRING BOOTS',
-    desc: 'Increases jump height by 40%',
-    duration: 15,
+    name: 'JOUSIKENGÄT',
+    desc: '+40% hyppykorkeus aktivoitu pysyvästi!',
+    duration: Infinity,
     color: '#10b981',
     icon: 'chevrons-up',
   },
   SHIELD: {
-    name: 'KINETIC SHIELD',
-    desc: 'Protects from 1 hazard or enemy hit',
-    duration: 25,
+    name: 'KINEETTINEN KILPI',
+    desc: 'Kineettinen suojakenttä aktiivinen! Torjuu vihollisen iskut.',
+    duration: Infinity,
     color: '#8b5cf6',
     icon: 'shield',
   },
   SUPER_DASH: {
-    name: 'WARP DASH',
-    desc: 'Press Dash [B] to thrust forward with invulnerability',
-    duration: 15,
+    name: 'WARP-SYÖKSY',
+    desc: 'Super-syöksy aktivoitu pysyvästi! Pidempi syöksy ja lyhyempi viive.',
+    duration: Infinity,
     color: '#f59e0b',
     icon: 'zap',
   },

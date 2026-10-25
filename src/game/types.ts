@@ -102,15 +102,20 @@ export interface Player extends Rect {
   jumpCount: number;
   maxJumps: number;
   jumpStrength: number;
-  // Powerups
+  // Pysyvät voimat:
   activePowerUp: PowerUpType | null;
   powerUpTimeRemaining: number;
+  unlockedPowerUps: PowerUpType[];
+  totalPowerUpsAwarded: number;
+  hasDoubleJump: boolean;
+  hasHighJump: boolean;
+  hasSuperDash: boolean;
   hasShield: boolean;
   isDashing: boolean;
   dashTimer: number;
   dashCooldown: number;
-  // Progression
-  cubesBrokenCount: number; // 0 or 1, triggers powerup at 2 then resets to 0
+  // Eteneminen:
+  cubesBrokenCount: number; // 0 tai 1, antaa pysyvän voiman luvulla 2 ja nollaantuu
   totalCubesBroken: number;
   enemiesStomped: number;
   score: number;
@@ -118,7 +123,6 @@ export interface Player extends Rect {
   maxLives: number;
   invulnerableTimer: number;
   altitudeMeters: number;
-  // Animation / Visual juice
   squashScaleX: number;
   squashScaleY: number;
   trail: { x: number; y: number; alpha: number }[];
