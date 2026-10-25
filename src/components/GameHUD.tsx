@@ -69,7 +69,7 @@ export const GameHUD: React.FC<GameHUDProps> = ({
             <div className="flex items-center gap-2 text-[11px] font-black text-amber-400 uppercase tracking-widest">
               <span>⚡ POWER CUBES</span>
               <span className="font-mono bg-amber-950/80 border border-amber-600/50 px-1.5 py-0.5 rounded text-amber-300">
-                {player.cubesBrokenCount} / 2
+                {player.cubesBrokenCount} / 3
               </span>
             </div>
 

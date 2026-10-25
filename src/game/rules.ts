@@ -32,7 +32,7 @@ export function processCubeBreak(
   }
 
   const nextCount = currentCubes + 1;
-  if (nextCount >= 2) {
+  if (nextCount >= 3) {
     let powerUp: PowerUpType;
     if (preferredPowerUp) {
       powerUp = preferredPowerUp;
